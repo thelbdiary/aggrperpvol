@@ -158,37 +158,50 @@ This guide will walk you through deploying your Next.js application to Vercel an
      ```
 
    **After creating the tables, set up RLS policies**:
-   - For each table, you'll need to create a policy to allow access
+   - For each table, you'll need to create policies to allow all operations (SELECT, INSERT, UPDATE, DELETE)
    - Click on the table name in the Table Editor
    - Go to the "Policies" tab
    - Click "New Policy" button
-   - In the "Create a new Row Level Security policy" dialog that appears:
-     - Policy Name: "Enable read access for all users" (this should be pre-filled)
-     - Table: Should show your table name (e.g., "public.api_keys")
-     - Policy Behavior: Should show "PERMISSIVE" (leave as is)
-     - Policy Command: Make sure "SELECT" is selected (for read access)
-     - Target Roles: Leave empty (defaults to "public")
-     - Using clause: Leave as `true` in the code editor at the bottom
-     - The SQL preview should look something like:
-       ```sql
-       create policy "Enable read access for all users"
-       on "public"."api_keys"
-       as PERMISSIVE
-       for SELECT
-       to public
-       using (
-         true
-       );
-       ```
-     - Click "Save policy" to create the policy
+   - Choose "Create a policy from scratch"
    
-   - Repeat the same process for the other tables (`jwt_tokens` and `historical_volume`)
+   - **For SELECT operations**:
+     - Policy Name: "Enable read access for all users"
+     - Policy Definition: For the "USING expression" enter `true`
+     - Click "Review" then "Save policy"
    
-   - You can also add policies for INSERT, UPDATE, and DELETE if your application needs to modify data:
-     - Follow the same steps but select the appropriate command (INSERT, UPDATE, or DELETE)
-     - You can use the templates provided at the bottom of the policy creation dialog
+   - **For INSERT operations**:
+     - Click "New Policy" again
+     - Policy Name: "Enable insert access for all users"
+     - Operation: Select "INSERT"
+     - Policy Definition: For the "CHECK expression" enter `true`
+     - Click "Review" then "Save policy"
+   
+   - **For UPDATE operations**:
+     - Click "New Policy" again
+     - Policy Name: "Enable update access for all users"
+     - Operation: Select "UPDATE"
+     - Policy Definition: For the "USING expression" enter `true` and for the "CHECK expression" also enter `true`
+     - Click "Review" then "Save policy"
+   
+   - **For DELETE operations**:
+     - Click "New Policy" again
+     - Policy Name: "Enable delete access for all users"
+     - Operation: Select "DELETE"
+     - Policy Definition: For the "USING expression" enter `true`
+     - Click "Review" then "Save policy"
+   
+   - Repeat this process for all three tables: `api_keys`, `jwt_tokens`, and `historical_volume`
+   
+   - **Alternatively, you can use the "Get started quickly" option**:
+     - Click "New Policy"
+     - Select "Get started quickly"
+     - Choose "Enable read access to everyone"
+     - Click "Use this template"
+     - Repeat for "Enable insert access to everyone", "Enable update access to everyone", and "Enable delete access to everyone"
    
    ![Supabase RLS Policy Setup](https://i.imgur.com/Wd9Ygqm.png)
+   
+   > **IMPORTANT**: Without proper RLS policies, you'll get errors like "new row violates row-level security policy for table" when trying to save data.
 
 3. **Get Your Supabase Credentials**:
    - Go to the "Project Settings" section in your Supabase project (click the gear icon in the sidebar)

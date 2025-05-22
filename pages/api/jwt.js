@@ -8,6 +8,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('Saving JWT token...');
     const { token } = req.body;
     
     if (!token) {
@@ -16,10 +17,12 @@ export default async function handler(req, res) {
     
     // Basic validation of the JWT token format
     try {
+      console.log('Validating JWT token format...');
       // Just decode the token to check its structure, don't verify signature
       const decoded = jwt.decode(token, { complete: true });
       
       if (!decoded || !decoded.header || !decoded.payload) {
+        console.error('Invalid JWT token format: Missing header or payload');
         return res.status(400).json({ 
           error: 'Invalid JWT token format',
           details: 'The token does not appear to be a valid JWT'
@@ -32,6 +35,8 @@ export default async function handler(req, res) {
         // Continue anyway, just a warning
       }
       
+      // Log the token header for debugging
+      console.log('JWT token header:', JSON.stringify(decoded.header));
       console.log('JWT token validated successfully');
     } catch (jwtError) {
       console.error('JWT validation error:', jwtError);
@@ -42,6 +47,7 @@ export default async function handler(req, res) {
     }
     
     // Check if the jwt_tokens table exists
+    console.log('Checking if jwt_tokens table exists...');
     const { error: tableCheckError } = await supabase
       .from('jwt_tokens')
       .select('count')
@@ -54,9 +60,22 @@ export default async function handler(req, res) {
           error: 'The jwt_tokens table does not exist in the database. Please set up your Supabase tables as described in the README.' 
         });
       }
+      
+      // Check for RLS policy error
+      if (tableCheckError.message && tableCheckError.message.includes('row-level security')) {
+        logSupabaseError(tableCheckError, 'RLS policy error when checking jwt_tokens table');
+        return res.status(500).json({ 
+          error: 'Row-level security policy error',
+          details: 'Please set up RLS policies for the jwt_tokens table as described in the README. You need to enable SELECT, INSERT, UPDATE, and DELETE for all users.'
+        });
+      }
+      
+      logSupabaseError(tableCheckError, 'checking jwt_tokens table');
+      throw tableCheckError;
     }
     
     // First check if a record with platform='paradex' already exists
+    console.log('Checking if a Paradex JWT token already exists...');
     const { data: existingToken, error: fetchError } = await supabase
       .from('jwt_tokens')
       .select('id')
@@ -64,41 +83,58 @@ export default async function handler(req, res) {
       .single();
       
     if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found" which is fine
+      // Check for RLS policy error
+      if (fetchError.message && fetchError.message.includes('row-level security')) {
+        logSupabaseError(fetchError, 'RLS policy error when checking for existing JWT token');
+        return res.status(500).json({ 
+          error: 'Row-level security policy error',
+          details: 'Please set up RLS policies for the jwt_tokens table as described in the README. You need to enable SELECT, INSERT, UPDATE, and DELETE for all users.'
+        });
+      }
+      
       logSupabaseError(fetchError, 'checking for existing JWT token');
       throw fetchError;
     }
     
-    let error;
+    let result;
     
     if (existingToken) {
+      console.log('Updating existing JWT token...');
       // Update existing record
-      const { error: updateError } = await supabase
+      result = await supabase
         .from('jwt_tokens')
         .update({ 
           token,
           created_at: new Date().toISOString()
         })
         .eq('id', existingToken.id);
-        
-      error = updateError;
     } else {
+      console.log('Creating new JWT token record...');
       // Insert new record
-      const { error: insertError } = await supabase
+      result = await supabase
         .from('jwt_tokens')
         .insert({ 
           platform: 'paradex',
           token,
           created_at: new Date().toISOString()
         });
-        
-      error = insertError;
-    }
-      
-    if (error) {
-      logSupabaseError(error, 'saving JWT token');
-      throw error;
     }
     
+    if (result.error) {
+      // Check for RLS policy error
+      if (result.error.message && result.error.message.includes('row-level security')) {
+        logSupabaseError(result.error, 'RLS policy error when saving JWT token');
+        return res.status(500).json({ 
+          error: 'Row-level security policy error',
+          details: 'Please set up RLS policies for the jwt_tokens table as described in the README. You need to enable SELECT, INSERT, UPDATE, and DELETE for all users.'
+        });
+      }
+      
+      logSupabaseError(result.error, 'saving JWT token');
+      throw result.error;
+    }
+    
+    console.log('JWT token saved successfully');
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error('Error saving JWT token:', error);
@@ -127,6 +163,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ 
         error: 'Invalid JWT token format',
         details: error.message
+      });
+    } else if (error.message && error.message.includes('row-level security')) {
+      // RLS policy error
+      return res.status(500).json({ 
+        error: 'Row-level security policy error',
+        details: 'Please set up RLS policies for the jwt_tokens table as described in the README. You need to enable SELECT, INSERT, UPDATE, and DELETE for all users.'
       });
     }
     

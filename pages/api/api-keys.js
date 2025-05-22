@@ -17,6 +17,8 @@ export default async function handler(req, res) {
  */
 async function getApiKeys(req, res) {
   try {
+    console.log('Fetching API keys...');
+    
     // Check if the api_keys table exists
     const { error: tableCheckError } = await supabase
       .from('api_keys')
@@ -30,6 +32,18 @@ async function getApiKeys(req, res) {
           error: 'The api_keys table does not exist in the database. Please set up your Supabase tables as described in the README.' 
         });
       }
+      
+      // Check for RLS policy error
+      if (tableCheckError.message && tableCheckError.message.includes('row-level security')) {
+        logSupabaseError(tableCheckError, 'RLS policy error when checking api_keys table');
+        return res.status(500).json({ 
+          error: 'Row-level security policy error',
+          details: 'Please set up RLS policies for the api_keys table as described in the README. You need to enable SELECT, INSERT, UPDATE, and DELETE for all users.'
+        });
+      }
+      
+      logSupabaseError(tableCheckError, 'checking api_keys table');
+      throw tableCheckError;
     }
     
     // Get API keys from Supabase
@@ -39,9 +53,20 @@ async function getApiKeys(req, res) {
       .order('created_at', { ascending: false });
       
     if (error) {
+      // Check for RLS policy error
+      if (error.message && error.message.includes('row-level security')) {
+        logSupabaseError(error, 'RLS policy error when fetching API keys');
+        return res.status(500).json({ 
+          error: 'Row-level security policy error',
+          details: 'Please set up RLS policies for the api_keys table as described in the README. You need to enable SELECT, INSERT, UPDATE, and DELETE for all users.'
+        });
+      }
+      
       logSupabaseError(error, 'fetching API keys');
       throw error;
     }
+    
+    console.log(`Found ${data.length} API keys`);
     
     // Return the API keys (without the actual keys for security)
     return res.status(200).json({ 
@@ -67,6 +92,7 @@ async function getApiKeys(req, res) {
  */
 async function saveApiKey(req, res) {
   try {
+    console.log('Saving API key...');
     const { platform, api_key, api_secret } = req.body;
     
     // Validate input
@@ -82,6 +108,8 @@ async function saveApiKey(req, res) {
       });
     }
     
+    console.log(`Saving API key for platform: ${platform}`);
+    
     // Check if the api_keys table exists
     const { error: tableCheckError } = await supabase
       .from('api_keys')
@@ -95,6 +123,18 @@ async function saveApiKey(req, res) {
           error: 'The api_keys table does not exist in the database. Please set up your Supabase tables as described in the README.' 
         });
       }
+      
+      // Check for RLS policy error
+      if (tableCheckError.message && tableCheckError.message.includes('row-level security')) {
+        logSupabaseError(tableCheckError, 'RLS policy error when checking api_keys table');
+        return res.status(500).json({ 
+          error: 'Row-level security policy error',
+          details: 'Please set up RLS policies for the api_keys table as described in the README. You need to enable SELECT, INSERT, UPDATE, and DELETE for all users.'
+        });
+      }
+      
+      logSupabaseError(tableCheckError, 'checking api_keys table');
+      throw tableCheckError;
     }
     
     // First check if a record with this platform already exists
@@ -105,15 +145,25 @@ async function saveApiKey(req, res) {
       .single();
       
     if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found" which is fine
+      // Check for RLS policy error
+      if (fetchError.message && fetchError.message.includes('row-level security')) {
+        logSupabaseError(fetchError, 'RLS policy error when checking for existing API key');
+        return res.status(500).json({ 
+          error: 'Row-level security policy error',
+          details: 'Please set up RLS policies for the api_keys table as described in the README. You need to enable SELECT, INSERT, UPDATE, and DELETE for all users.'
+        });
+      }
+      
       logSupabaseError(fetchError, 'checking for existing API key');
       throw fetchError;
     }
     
-    let error;
+    let result;
     
     if (existingKey) {
+      console.log(`Updating existing API key for platform: ${platform}`);
       // Update existing record
-      const { error: updateError } = await supabase
+      result = await supabase
         .from('api_keys')
         .update({ 
           api_key,
@@ -121,11 +171,10 @@ async function saveApiKey(req, res) {
           created_at: new Date().toISOString()
         })
         .eq('id', existingKey.id);
-        
-      error = updateError;
     } else {
+      console.log(`Creating new API key for platform: ${platform}`);
       // Insert new record
-      const { error: insertError } = await supabase
+      result = await supabase
         .from('api_keys')
         .insert({ 
           platform,
@@ -133,15 +182,23 @@ async function saveApiKey(req, res) {
           api_secret,
           created_at: new Date().toISOString()
         });
-        
-      error = insertError;
-    }
-      
-    if (error) {
-      logSupabaseError(error, 'saving API key');
-      throw error;
     }
     
+    if (result.error) {
+      // Check for RLS policy error
+      if (result.error.message && result.error.message.includes('row-level security')) {
+        logSupabaseError(result.error, 'RLS policy error when saving API key');
+        return res.status(500).json({ 
+          error: 'Row-level security policy error',
+          details: 'Please set up RLS policies for the api_keys table as described in the README. You need to enable SELECT, INSERT, UPDATE, and DELETE for all users.'
+        });
+      }
+      
+      logSupabaseError(result.error, 'saving API key');
+      throw result.error;
+    }
+    
+    console.log(`API key for platform ${platform} saved successfully`);
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error('Error saving API key:', error);
@@ -164,6 +221,12 @@ async function saveApiKey(req, res) {
       return res.status(400).json({ 
         error: 'A record for this platform already exists',
         details: 'Please use the update functionality instead of creating a new record'
+      });
+    } else if (error.message && error.message.includes('row-level security')) {
+      // RLS policy error
+      return res.status(500).json({ 
+        error: 'Row-level security policy error',
+        details: 'Please set up RLS policies for the api_keys table as described in the README. You need to enable SELECT, INSERT, UPDATE, and DELETE for all users.'
       });
     }
     
