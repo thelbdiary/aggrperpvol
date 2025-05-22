@@ -1,8 +1,9 @@
 import Head from 'next/head';
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, logSupabaseError } from '../lib/supabase';
 import VolumeChart from '../components/VolumeChart';
 import JwtForm from '../components/JwtForm';
+import ApiKeyForm from '../components/ApiKeyForm';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -170,7 +171,20 @@ export default function Home() {
           </div>
         )}
         
-        <JwtForm onJwtSaved={fetchVolumeData} />
+        <div className="settings-container">
+          <div className="settings-card">
+            <JwtForm onJwtSaved={fetchVolumeData} />
+          </div>
+          
+          <div className="settings-card">
+            <ApiKeyForm onApiKeySaved={fetchVolumeData} />
+          </div>
+        </div>
+        
+        <div className="data-timeframe">
+          <h3>Historical Data Range</h3>
+          <p>Showing trading volume data for the last 730 days (2 years)</p>
+        </div>
         
         {loading ? (
           <p>Loading volume data...</p>

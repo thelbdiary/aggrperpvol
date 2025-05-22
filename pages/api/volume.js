@@ -1,4 +1,4 @@
-import { supabase } from '../../lib/supabase';
+import { supabase, logSupabaseError } from '../../lib/supabase';
 import WooXConnector from '../../lib/wooxConnector';
 import ParadexConnector from '../../lib/paradexConnector';
 
@@ -37,10 +37,10 @@ export default async function handler(req, res) {
       paradexConnector = new ParadexConnector(jwtData.token);
     }
     
-    // Calculate date range (last 30 days)
+    // Calculate date range (last 730 days / 2 years)
     const endTime = new Date();
     const startTime = new Date();
-    startTime.setDate(startTime.getDate() - 30);
+    startTime.setDate(startTime.getDate() - 730);
     
     // Fetch volume data
     const [wooxVolumeData, paradexVolumeData] = await Promise.all([
@@ -76,24 +76,46 @@ export default async function handler(req, res) {
     const timestamp = new Date().toISOString();
     
     try {
-      await Promise.all([
-        supabase.from('historical_volume').insert({
-          platform: 'woox',
-          volume_usd: wooxVolume,
-          timestamp
-        }),
-        supabase.from('historical_volume').insert({
-          platform: 'paradex',
-          volume_usd: paradexVolume,
-          timestamp
-        })
-      ]);
+      // Check if the historical_volume table exists
+      const { error: tableCheckError } = await supabase
+        .from('historical_volume')
+        .select('count')
+        .limit(1);
+        
+      if (tableCheckError) {
+        if (tableCheckError.code === '42P01') { // Table doesn't exist
+          logSupabaseError(tableCheckError, 'checking historical_volume table');
+          console.warn('The historical_volume table does not exist in the database. Please set up your Supabase tables as described in the README.');
+        } else {
+          logSupabaseError(tableCheckError, 'checking historical_volume table');
+        }
+      } else {
+        // Table exists, store the data
+        const [wooxResult, paradexResult] = await Promise.all([
+          supabase.from('historical_volume').insert({
+            platform: 'woox',
+            volume_usd: wooxVolume,
+            timestamp
+          }),
+          supabase.from('historical_volume').insert({
+            platform: 'paradex',
+            volume_usd: paradexVolume,
+            timestamp
+          })
+        ]);
+        
+        if (wooxResult.error) {
+          logSupabaseError(wooxResult.error, 'storing WooX volume data');
+        }
+        
+        if (paradexResult.error) {
+          logSupabaseError(paradexResult.error, 'storing Paradex volume data');
+        }
+      }
     } catch (storageError) {
-      // If table doesn't exist yet, create it
-      console.warn('Failed to store volume data, table might not exist:', storageError.message);
+      console.error('Failed to store volume data:', storageError);
       
       // Continue without storing - we'll still return the current data
-      // In a production app, we would create the table here
     }
     
     // Filter and format historical data
