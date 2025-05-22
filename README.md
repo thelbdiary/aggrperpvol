@@ -131,11 +131,34 @@ This guide will walk you through deploying your Next.js application to Vercel an
    - For each table, you'll need to create a policy to allow access
    - Click on the table name in the Table Editor
    - Go to the "Policies" tab
-   - Click "Add Policy"
-   - Choose "Enable read access to everyone" for a simple setup
-   - Name: "Allow read access"
-   - Policy definition: Leave as default (`true`)
-   - Click "Save" to create the policy
+   - Click "New Policy" button
+   - In the "Create a new Row Level Security policy" dialog that appears:
+     - Policy Name: "Enable read access for all users" (this should be pre-filled)
+     - Table: Should show your table name (e.g., "public.api_keys")
+     - Policy Behavior: Should show "PERMISSIVE" (leave as is)
+     - Policy Command: Make sure "SELECT" is selected (for read access)
+     - Target Roles: Leave empty (defaults to "public")
+     - Using clause: Leave as `true` in the code editor at the bottom
+     - The SQL preview should look something like:
+       ```sql
+       create policy "Enable read access for all users"
+       on "public"."api_keys"
+       as PERMISSIVE
+       for SELECT
+       to public
+       using (
+         true
+       );
+       ```
+     - Click "Save policy" to create the policy
+   
+   - Repeat the same process for the other tables (`jwt_tokens` and `historical_volume`)
+   
+   - You can also add policies for INSERT, UPDATE, and DELETE if your application needs to modify data:
+     - Follow the same steps but select the appropriate command (INSERT, UPDATE, or DELETE)
+     - You can use the templates provided at the bottom of the policy creation dialog
+   
+   ![Supabase RLS Policy Setup](https://i.imgur.com/Wd9Ygqm.png)
 
 3. **Get Your Supabase Credentials**:
    - Go to the "Project Settings" section in your Supabase project (click the gear icon in the sidebar)
