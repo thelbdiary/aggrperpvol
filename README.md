@@ -408,3 +408,18 @@ This script will:
 5. Provide a summary of the results
 
 This is useful for testing the fallback mechanisms that the application uses when API credentials are invalid or expired.
+
+### Testing Supabase RLS Policies
+
+To test if your Supabase RLS policies are correctly set up:
+
+```bash
+node scripts/test_rls_policies.js
+```
+
+This script will:
+1. Test SELECT, INSERT, UPDATE, and DELETE operations on all tables
+2. Report any RLS policy errors
+3. Provide guidance on how to fix the issues
+
+If you're getting errors like "new row violates row-level security policy for table", this script will help you identify and fix the problem.
