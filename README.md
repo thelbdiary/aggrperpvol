@@ -101,6 +101,15 @@ This guide will walk you through deploying your Next.js application to Vercel an
        2. Name: `api_key`, Type: `text`, Default Value: leave empty, Check "Not Null"
        3. Name: `api_secret`, Type: `text`, Default Value: leave empty, Check "Not Null"
    - Click "Save" to create the table
+   
+   **Add a unique constraint to the platform column**:
+   - After creating the table, go to the "Table Editor"
+   - Click on the "api_keys" table
+   - Go to the "Constraints" tab
+   - Click "Add Constraint"
+   - Select "Unique" as the constraint type
+   - Select "platform" as the column
+   - Click "Save" to add the constraint
 
    **For the jwt_tokens table**:
    - Table Name: `jwt_tokens`
@@ -113,6 +122,15 @@ This guide will walk you through deploying your Next.js application to Vercel an
        1. Name: `platform`, Type: `text`, Default Value: leave empty, Check "Not Null"
        2. Name: `token`, Type: `text`, Default Value: leave empty, Check "Not Null"
    - Click "Save" to create the table
+   
+   **Add a unique constraint to the platform column**:
+   - After creating the table, go to the "Table Editor"
+   - Click on the "jwt_tokens" table
+   - Go to the "Constraints" tab
+   - Click "Add Constraint"
+   - Select "Unique" as the constraint type
+   - Select "platform" as the column
+   - Click "Save" to add the constraint
 
    **For the historical_volume table**:
    - Table Name: `historical_volume`
@@ -126,6 +144,18 @@ This guide will walk you through deploying your Next.js application to Vercel an
        2. Name: `volume_usd`, Type: `float8`, Default Value: leave empty, Check "Not Null"
        3. Name: `timestamp`, Type: `timestamptz`, Default Value: `now()`, Check "Not Null"
    - Click "Save" to create the table
+
+   **Alternative: Add Unique Constraints Using SQL**:
+   - If you prefer, you can add the unique constraints using SQL directly
+   - Go to the "SQL Editor" in the Supabase dashboard
+   - Run the following SQL commands:
+     ```sql
+     -- Add unique constraint to api_keys.platform
+     ALTER TABLE "public"."api_keys" ADD CONSTRAINT "api_keys_platform_key" UNIQUE ("platform");
+     
+     -- Add unique constraint to jwt_tokens.platform
+     ALTER TABLE "public"."jwt_tokens" ADD CONSTRAINT "jwt_tokens_platform_key" UNIQUE ("platform");
+     ```
 
    **After creating the tables, set up RLS policies**:
    - For each table, you'll need to create a policy to allow access

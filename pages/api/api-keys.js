@@ -97,17 +97,45 @@ async function saveApiKey(req, res) {
       }
     }
     
-    // Store the API key in Supabase
-    const { error } = await supabase
+    // First check if a record with this platform already exists
+    const { data: existingKey, error: fetchError } = await supabase
       .from('api_keys')
-      .upsert({ 
-        platform,
-        api_key,
-        api_secret,
-        created_at: new Date().toISOString()
-      }, {
-        onConflict: 'platform'
-      });
+      .select('id')
+      .eq('platform', platform)
+      .single();
+      
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found" which is fine
+      logSupabaseError(fetchError, 'checking for existing API key');
+      throw fetchError;
+    }
+    
+    let error;
+    
+    if (existingKey) {
+      // Update existing record
+      const { error: updateError } = await supabase
+        .from('api_keys')
+        .update({ 
+          api_key,
+          api_secret,
+          created_at: new Date().toISOString()
+        })
+        .eq('id', existingKey.id);
+        
+      error = updateError;
+    } else {
+      // Insert new record
+      const { error: insertError } = await supabase
+        .from('api_keys')
+        .insert({ 
+          platform,
+          api_key,
+          api_secret,
+          created_at: new Date().toISOString()
+        });
+        
+      error = insertError;
+    }
       
     if (error) {
       logSupabaseError(error, 'saving API key');
@@ -117,6 +145,28 @@ async function saveApiKey(req, res) {
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error('Error saving API key:', error);
+    
+    // Check for specific error types
+    if (error.code === '23505') {
+      // Unique violation error
+      return res.status(400).json({ 
+        error: 'A record for this platform already exists',
+        details: 'Please use the update functionality instead of creating a new record'
+      });
+    } else if (error.code === '42P01') {
+      // Table doesn't exist
+      return res.status(500).json({ 
+        error: 'The api_keys table does not exist in the database',
+        details: 'Please set up your Supabase tables as described in the README'
+      });
+    } else if (error.message && error.message.includes('unique constraint')) {
+      // Another unique constraint error
+      return res.status(400).json({ 
+        error: 'A record for this platform already exists',
+        details: 'Please use the update functionality instead of creating a new record'
+      });
+    }
+    
     return res.status(500).json({ 
       error: 'An error occurred while saving the API key',
       details: error.message
