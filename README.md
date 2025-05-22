@@ -378,3 +378,20 @@ node scripts/test_paradex_jwt.js <YOUR_L2_ADDRESS> <YOUR_L2_PRIVATE_KEY>
 ```
 
 Replace `<YOUR_L2_ADDRESS>` and `<YOUR_L2_PRIVATE_KEY>` with your actual Paradex L2 address and private key.
+
+### Testing Both Exchanges with Fallback Mechanisms
+
+To test both WooX and Paradex APIs with fallback mechanisms:
+
+```bash
+node scripts/test_combined_with_fallback.js <WOOX_API_KEY> <WOOX_API_SECRET> <PARADEX_JWT_TOKEN>
+```
+
+This script will:
+1. Test the WooX API with your credentials
+2. If WooX authentication fails, fall back to public endpoints
+3. Test the Paradex API with your JWT token
+4. If Paradex authentication fails, fall back to public endpoints
+5. Provide a summary of the results
+
+This is useful for testing the fallback mechanisms that the application uses when API credentials are invalid or expired.
