@@ -87,54 +87,88 @@ This guide will walk you through deploying your Next.js application to Vercel an
 
 2. **Create Required Tables**:
    - Once your project is created, go to the "Table Editor" in the Supabase dashboard
-   - Create the following tables:
+   - Click "New Table" to create each of the following tables:
 
-   **api_keys table**:
-   ```sql
-   create table api_keys (
-     id uuid default uuid_generate_v4() primary key,
-     platform text not null,
-     api_key text not null,
-     api_secret text not null,
-     created_at timestamp with time zone default now()
-   );
-   ```
+   **For the api_keys table**:
+   - Table Name: `api_keys`
+   - Description: (Optional) "Stores API keys for exchanges"
+   - Enable Row Level Security (RLS): Check this box (recommended for security)
+   - Enable Realtime: Leave unchecked (unless you need real-time updates)
+   - Columns:
+     - The `id` and `created_at` columns are added by default
+     - Click "Add column" three times to add these columns:
+       1. Name: `platform`, Type: `text`, Default Value: leave empty, Check "Not Null"
+       2. Name: `api_key`, Type: `text`, Default Value: leave empty, Check "Not Null"
+       3. Name: `api_secret`, Type: `text`, Default Value: leave empty, Check "Not Null"
+   - Click "Save" to create the table
 
-   **jwt_tokens table**:
-   ```sql
-   create table jwt_tokens (
-     id uuid default uuid_generate_v4() primary key,
-     platform text not null,
-     token text not null,
-     created_at timestamp with time zone default now()
-   );
-   ```
+   **For the jwt_tokens table**:
+   - Table Name: `jwt_tokens`
+   - Description: (Optional) "Stores JWT tokens for authentication"
+   - Enable Row Level Security (RLS): Check this box (recommended for security)
+   - Enable Realtime: Leave unchecked
+   - Columns:
+     - The `id` and `created_at` columns are added by default
+     - Click "Add column" twice to add these columns:
+       1. Name: `platform`, Type: `text`, Default Value: leave empty, Check "Not Null"
+       2. Name: `token`, Type: `text`, Default Value: leave empty, Check "Not Null"
+   - Click "Save" to create the table
 
-   **historical_volume table**:
-   ```sql
-   create table historical_volume (
-     id uuid default uuid_generate_v4() primary key,
-     platform text not null,
-     volume_usd float not null,
-     timestamp timestamp with time zone default now()
-   );
-   ```
+   **For the historical_volume table**:
+   - Table Name: `historical_volume`
+   - Description: (Optional) "Stores historical volume data"
+   - Enable Row Level Security (RLS): Check this box (recommended for security)
+   - Enable Realtime: Leave unchecked
+   - Columns:
+     - The `id` and `created_at` columns are added by default
+     - Click "Add column" three times to add these columns:
+       1. Name: `platform`, Type: `text`, Default Value: leave empty, Check "Not Null"
+       2. Name: `volume_usd`, Type: `float8`, Default Value: leave empty, Check "Not Null"
+       3. Name: `timestamp`, Type: `timestamptz`, Default Value: `now()`, Check "Not Null"
+   - Click "Save" to create the table
+
+   **After creating the tables, set up RLS policies**:
+   - For each table, you'll need to create a policy to allow access
+   - Click on the table name in the Table Editor
+   - Go to the "Policies" tab
+   - Click "Add Policy"
+   - Choose "Enable read access to everyone" for a simple setup
+   - Name: "Allow read access"
+   - Policy definition: Leave as default (`true`)
+   - Click "Save" to create the policy
 
 3. **Get Your Supabase Credentials**:
-   - Go to the "Settings" section in your Supabase project
+   - Go to the "Project Settings" section in your Supabase project (click the gear icon in the sidebar)
    - Click on "API" in the sidebar
    - You'll need two values:
-     - **Project URL**: Copy the URL under "Project URL"
-     - **anon public key**: Copy the key under "anon public"
+     - **Project URL**: Copy the URL under "Project URL" (looks like `https://xxxxxxxxxxxx.supabase.co`)
+     - **anon public key**: Copy the key under "Project API keys" > "anon public" (starts with "eyJh...")
    - Keep these values handy for the Vercel deployment
+   
+   ![Supabase API Keys Location](https://i.imgur.com/JsHLN2C.png)
 
 4. **Add Initial Data (Optional)**:
-   - To add your WooX API keys, go to the "Table Editor", select the "api_keys" table, and click "Insert Row"
-   - Fill in the following:
-     - platform: "woox"
-     - api_key: Your WooX API key
-     - api_secret: Your WooX API secret
-   - Click "Save"
+   - To add your WooX API keys:
+     - Go to the "Table Editor" in the sidebar
+     - Click on the "api_keys" table
+     - Click "Insert" button at the top right
+     - Fill in the following fields:
+       - platform: "woox"
+       - api_key: Your WooX API key (e.g., "1VH4jswjYDOf2ZdE2JsxrQ==")
+       - api_secret: Your WooX API secret (e.g., "2IEEY77I72T2MB5RPO3DRVIN7JBQ")
+       - Leave id and created_at as they are (they'll be auto-generated)
+     - Click "Save" to insert the row
+   
+   - To add your Paradex JWT token:
+     - Click on the "jwt_tokens" table
+     - Click "Insert" button at the top right
+     - Fill in the following fields:
+       - platform: "paradex"
+       - token: Your Paradex JWT token (generated using the scripts/generate_paradex_jwt.js script)
+       - Leave id and created_at as they are (they'll be auto-generated)
+     - Click "Save" to insert the row
+   
+   ![Supabase Insert Row Example](https://i.imgur.com/8Yvj5Wd.png)
 
 ### Step 2: Deploy to Vercel
 
@@ -154,12 +188,17 @@ This guide will walk you through deploying your Next.js application to Vercel an
 
 3. **Add Environment Variables**:
    - Expand the "Environment Variables" section
-   - Add the following variables:
-     - Name: `NEXT_PUBLIC_SUPABASE_URL`
-       Value: Your Supabase Project URL (from Step 1.3)
-     - Name: `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-       Value: Your Supabase anon public key (from Step 1.3)
-   - Click "Add" for each variable
+   - Add the following variables one by one:
+     - First variable:
+       - Name: `NEXT_PUBLIC_SUPABASE_URL`
+       - Value: Your Supabase Project URL (from Step 1.3)
+       - Click "Add"
+     - Second variable:
+       - Name: `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+       - Value: Your Supabase anon public key (from Step 1.3)
+       - Click "Add"
+   
+   ![Vercel Environment Variables](https://i.imgur.com/JvN5hGO.png)
 
 4. **Deploy**:
    - Click "Deploy"
@@ -188,11 +227,19 @@ This guide will walk you through deploying your Next.js application to Vercel an
 
 2. **Set Up a Scheduled Job for Data Updates**:
    - To regularly update your volume data, you can set up a scheduled job using Vercel Cron Jobs:
-   - Go to your Vercel project settings
-   - Navigate to "Cron Jobs"
+   - Go to your Vercel project dashboard
+   - Click on your project
+   - Go to "Settings" tab
+   - Select "Cron Jobs" from the left sidebar
    - Click "Create Cron Job"
-   - Set up a job to call your `/api/volume` endpoint at regular intervals (e.g., every hour)
-   - Example cron expression: `0 * * * *` (runs every hour)
+   - Fill in the following:
+     - Name: "Update Volume Data"
+     - Cron Expression: `0 * * * *` (runs every hour)
+     - HTTP Method: GET
+     - URL Path: `/api/volume`
+   - Click "Create" to save the cron job
+   
+   ![Vercel Cron Job Setup](https://i.imgur.com/DZnLdJP.png)
 
 ### Troubleshooting
 
