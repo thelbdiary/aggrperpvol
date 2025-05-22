@@ -334,3 +334,47 @@ This guide will walk you through deploying your Next.js application to Vercel an
    - You can monitor the deployment status in your Vercel dashboard
 
 By following this guide, you should have successfully deployed your Next.js application to Vercel with Supabase integration. Your application will now be accessible worldwide with automatic updates whenever you push changes to your GitHub repository.
+
+## Testing API Credentials
+
+The project includes several test scripts to verify your API credentials:
+
+### Testing JWT Token Validation
+
+To test basic JWT token validation:
+
+```bash
+node scripts/test_jwt_validation.js
+```
+
+This script will create and validate various test JWT tokens to ensure the validation logic is working correctly.
+
+### Testing Paradex JWT Token
+
+To test your Paradex JWT token with the Paradex API:
+
+```bash
+node scripts/test_existing_paradex_jwt.js <YOUR_JWT_TOKEN>
+```
+
+Replace `<YOUR_JWT_TOKEN>` with your actual Paradex JWT token.
+
+### Testing WooX API Credentials
+
+To test your WooX API credentials:
+
+```bash
+node scripts/test_woox_api.js <YOUR_API_KEY> <YOUR_API_SECRET>
+```
+
+Replace `<YOUR_API_KEY>` and `<YOUR_API_SECRET>` with your actual WooX API credentials.
+
+### Generating a Paradex JWT Token
+
+To generate a new Paradex JWT token:
+
+```bash
+node scripts/test_paradex_jwt.js <YOUR_L2_ADDRESS> <YOUR_L2_PRIVATE_KEY>
+```
+
+Replace `<YOUR_L2_ADDRESS>` and `<YOUR_L2_PRIVATE_KEY>` with your actual Paradex L2 address and private key.
