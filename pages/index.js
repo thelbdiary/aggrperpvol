@@ -1,26 +1,8 @@
+import Head from 'next/head';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+import VolumeChart from '../components/VolumeChart';
+import JwtForm from '../components/JwtForm';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -161,157 +143,85 @@ export default function Home() {
     }
   };
 
-  const chartData = {
-    labels: volumeData.woox.history.map(item => 
-      new Date(item.timestamp).toLocaleDateString()
-    ).reverse(),
-    datasets: [
-      {
-        label: 'WooX Volume (USD)',
-        data: volumeData.woox.history.map(item => item.volume_usd).reverse(),
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-      },
-      {
-        label: 'Paradex Volume (USD)',
-        data: volumeData.paradex.history.map(item => item.volume_usd).reverse(),
-        borderColor: 'rgb(53, 162, 235)',
-        backgroundColor: 'rgba(53, 162, 235, 0.5)',
-      },
-    ],
+  // Format currency for display
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
   };
 
   return (
     <div className="container">
-      <h1>Aggregate Perpetual Volume Dashboard</h1>
-      
-      {error && (
-        <div className="error-message">
-          <p>Error: {error}</p>
-        </div>
-      )}
-      
-      <div className="jwt-section">
-        <h2>Paradex JWT Token</h2>
-        <textarea 
-          value={jwtToken}
-          onChange={(e) => setJwtToken(e.target.value)}
-          placeholder="Enter your Paradex JWT token here"
-          rows={4}
-        />
-        <button onClick={saveJwtToken}>Save JWT Token</button>
-      </div>
-      
-      <div className="volume-summary">
-        <div className="volume-card">
-          <h3>WooX Total Volume</h3>
-          <p className="volume-value">${volumeData.woox.totalVolume.toLocaleString()}</p>
-        </div>
+      <Head>
+        <title>Aggregate Perpetual Volume</title>
+        <meta name="description" content="Track trading volume from WooX and Paradex" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <main>
+        <h1>Aggregate Perpetual Volume Dashboard</h1>
         
-        <div className="volume-card">
-          <h3>Paradex Total Volume</h3>
-          <p className="volume-value">${volumeData.paradex.totalVolume.toLocaleString()}</p>
-        </div>
-      </div>
-      
-      <div className="chart-container">
-        <h2>Historical Volume</h2>
-        <Line data={chartData} />
-      </div>
-      
-      <div className="actions">
-        <button 
-          onClick={fetchVolumeData} 
-          disabled={loading}
-        >
-          {loading ? 'Loading...' : 'Refresh Volume Data'}
-        </button>
-      </div>
-      
-      <style jsx>{`
-        .container {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 20px;
-          font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
-            Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
-        }
+        {error && (
+          <div className="error-message">
+            <p>Error: {error}</p>
+          </div>
+        )}
         
-        h1 {
-          text-align: center;
-          margin-bottom: 30px;
-        }
+        <JwtForm onJwtSaved={fetchVolumeData} />
         
-        .error-message {
-          background-color: #ffebee;
-          color: #c62828;
-          padding: 10px;
-          border-radius: 4px;
-          margin-bottom: 20px;
-        }
-        
-        .jwt-section {
-          margin-bottom: 30px;
-        }
-        
-        textarea {
-          width: 100%;
-          padding: 10px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          margin-bottom: 10px;
-          font-family: monospace;
-        }
-        
-        button {
-          background-color: #0070f3;
-          color: white;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 16px;
-        }
-        
-        button:hover {
-          background-color: #0051a8;
-        }
-        
-        button:disabled {
-          background-color: #ccc;
-          cursor: not-allowed;
-        }
-        
-        .volume-summary {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 30px;
-        }
-        
-        .volume-card {
-          flex: 1;
-          background-color: #f5f5f5;
-          padding: 20px;
-          border-radius: 8px;
-          margin: 0 10px;
-          text-align: center;
-        }
-        
-        .volume-value {
-          font-size: 24px;
-          font-weight: bold;
-          color: #0070f3;
-        }
-        
-        .chart-container {
-          margin-bottom: 30px;
-        }
-        
-        .actions {
-          text-align: center;
-          margin-top: 20px;
-        }
-      `}</style>
+        {loading ? (
+          <p>Loading volume data...</p>
+        ) : (
+          <div>
+            <div className="volume-summary">
+              <div className="volume-card">
+                <h3>WooX Total Volume</h3>
+                <p className="volume-value">{formatCurrency(volumeData.woox.totalVolume)}</p>
+                {volumeData.woox.source && (
+                  <div className="volume-source">
+                    {volumeData.woox.source === 'authenticated' 
+                      ? 'From authenticated API' 
+                      : volumeData.woox.source === 'public' 
+                        ? 'Estimated from public data'
+                        : 'Fallback data'}
+                  </div>
+                )}
+              </div>
+              
+              <div className="volume-card">
+                <h3>Paradex Total Volume</h3>
+                <p className="volume-value">{formatCurrency(volumeData.paradex.totalVolume)}</p>
+                {volumeData.paradex.source && (
+                  <div className="volume-source">
+                    {volumeData.paradex.source === 'authenticated' 
+                      ? 'From authenticated API' 
+                      : volumeData.paradex.source === 'public' 
+                        ? 'Estimated from public data'
+                        : 'Fallback data'}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <VolumeChart 
+              wooxData={volumeData.woox} 
+              paradexData={volumeData.paradex} 
+            />
+            
+            <div className="actions">
+              <button 
+                onClick={fetchVolumeData} 
+                disabled={loading}
+              >
+                {loading ? 'Loading...' : 'Refresh Volume Data'}
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
